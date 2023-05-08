@@ -21,6 +21,8 @@ class Vars:
     # value as the default value if applicable
     pattern = r'^(?:(?P<clsname>(?P<cls>[\w<>]+)(?P<optional>\??))\s+)(?P<name>\w+)(?P<value>.*)?$'
     lesser = r'(?P<name>\w+)(?P<value>=.*)?$'
+    # if user has specified JsonKey in comments or not
+    json_key_pattern = r'\(jk@\s*(?P<JsonKey>.*?)\)'
 
     def __init__(self, arg):
         self.origin = arg
@@ -39,9 +41,13 @@ class Vars:
         if comment:
             self.comment = comment[0]
             self.args['value'] = re.sub(self.comm, '', value)
+            jk = re.findall(self.json_key_pattern, self.comment)
+            if jk:
+                self.comment = re.sub(self.json_key_pattern, '', self.comment)
+                self.args['JsonKey'] = jk[0]
         else:
             self.comment = ''
-        for name in "clsname cls optional name value".split():
+        for name in "clsname cls optional name value JsonKey".split():
             value = self.args.get(name, '')
             setattr(self, name, value or '')
 
@@ -86,7 +92,11 @@ def state_gen(args, data=None):
     init = '%clsname init() {\n   return %clsname();\n  }'.replace('%clsname',
                                                                    args.name) if args.init else ''
     for v in vars:
-        final.append('%s\nfinal %s %s' % (v.comment, v.clsname, v.name))
+        final.append('%s%s\n  final %s %s' % (
+            v.comment,
+            "\n  @JsonKey(name: '%s')" % v.JsonKey if v.JsonKey else '',
+            v.clsname, v.name)
+        )
         const.append(
             '%s this.%s%s' % (
                 '' if (v.value and v.value.strip()) or v.optional else 'required', v.name, v.value))

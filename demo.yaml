@@ -7,7 +7,8 @@ state:
   props:
     - 'DictWord word=const DictWord(word: "")'
     - DictStatus status=DictStatus.init// current word status
-    - DictAction? action// current action
+    # add json key Action direction
+    - 'DictAction? action// current action (jk@Action)'
     - DictError? error//error status
     - String? hint//Definition with some key words replaced
     - List<String>? similar// word that might be similar to current word
