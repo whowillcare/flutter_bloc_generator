@@ -338,12 +338,12 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
 
                 ret = re.sub(
                     r'(super.*?{)',
-                    r'\1\n      %s' % event_handler_str,
+                    r'\1\n      %s' % event_handler_str.strip(),
                     exist_content
                 )
                 ret = re.sub(
                     r'(}\s*)$',
-                    r'\n%s\1' % event_funcs_str,
+                    r'%s\1' % event_funcs_str,
                     ret
                 )
 

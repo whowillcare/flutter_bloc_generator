@@ -1,0 +1,50 @@
+Languages:
+  -   locale: en_US
+      name: English
+      default: true
+  -   locale: zh_CN
+      name: Chinese
+Shared:
+  # we put all the shared keywords here, refer it by using $@ prefix, value can be one or an array by languages
+  AppName: XSleep
+  App: XSleep App
+  CompanyName: XSleep Inc.
+  CompanyLogo: "https://api.secure.xsleep.com/html/img/cover.png"
+  CompanyLogoImgTag: "<img src='$@CompanyLogo' width='100%%' />"
+  DiaryNoTitle:
+    - No title
+    - 无题
+Strings:
+  ### each string key will be generated as a method, name convention as string name, underscored with its format pattern like string_name_value and its value would look like "string named as %1$s value as %2$s
+  HourMeasure:
+    - Hours
+    - 小时
+  MinuteMeasure:
+    - Minutes
+    - 分钟
+
+  Sleep:
+    Set:
+      Hours:
+        # It's for exception, need to omit the format parameters
+        toMuch:
+          - "%s %s of sleep might be too much, did you want to make adjustment?"
+          - "%s%s的睡眠时间是不是有点夸张了？"
+        toLess:
+          - "%s %s of sleep might be too less, did you want to make adjustment?"
+          - "%s%s的睡眠时间是不是有点不够把？"
+    Analysis:
+      Color:
+        - NotEnough: "#F08080" #lightcoral
+          JustRight: "#5d8aa8" # air force blue
+          TooMuch: "#FF8C00" # DarkOrange
+          Incomplete: "#DC143C" #Crimson
+      Desc:
+        - NotEnough: You don't seem to have enough sleep!
+          JustRight: You must have got a very good dream, mind to share?
+          TooMuch: "You seem to have overslept!"
+          Incomplete: You might have forgot to end your sleep?
+        - NotEnough: 你好象睡得太少了呀！
+          JustRight: 你肯定作了个很好的梦，记得和大家分享哦？
+          TooMuch: 你可能睡过头了？
+          Incomplete: 你可能忘了打卡？

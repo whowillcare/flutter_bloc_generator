@@ -1,2 +1,5 @@
 demo
 .idea
+*.dart
+*.log
+*.pyc
