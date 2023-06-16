@@ -19,7 +19,7 @@ class Vars:
     # clasname has all class name including optional ?,
     # name as the variable name,
     # value as the default value if applicable
-    pattern = r'^(?:(?P<clsname>(?P<cls>[\w<>]+)(?P<optional>\??))\s+)(?P<name>\w+)(?P<value>.*)?$'
+    pattern = r'^(?:(?P<clsname>(?P<cls>[\w<,>]+)(?P<optional>\??))\s+)(?P<name>\w+)(?P<value>.*)?$'
     lesser = r'(?P<name>\w+)(?P<value>=.*)?$'
     # if user has specified JsonKey in comments or not
     json_key_pattern = r'\(jk@\s*(?P<JsonKey>.*?)\)'
@@ -96,7 +96,7 @@ def state_gen(args, data=None):
             v.comment,
             "\n  @JsonKey(name: '%s')" % v.JsonKey if v.JsonKey else '',
             v.clsname, v.name)
-        )
+                     )
         const.append(
             '%s this.%s%s' % (
                 '' if (v.value and v.value.strip()) or v.optional else 'required', v.name, v.value))
@@ -168,7 +168,7 @@ def sync_data(args, fields, data):
     for field, value in fields.items():
         if not getattr(args, field, None):
             setattr(args, field, data.get(field, value))
-    if args.dest.startswith('.'):  # assuming it's partial file name
+    if args.dest and args.dest.startswith('.'):  # assuming it's partial file name
         if args.part:  # we will be using the args.part to generate the dest name
             part, _ = os.path.splitext(args.part)
             args.dest = os.path.basename(part) + args.dest
@@ -290,10 +290,10 @@ def bloc_gen(args, data=None):
     bloc_template = DartTemplate('''
 %part
 class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
-   %constructor
    %repo
+   %constructor
+   %hydrate
 %event_handler
-%hydrate
 }
 ''')
 
@@ -470,10 +470,14 @@ def all_gen(args, data=None):
     importcode = data.get(IMPORT, '')
     prepare = {}
     result = {}
+    state_only = data.get('stateOnly', None)
     for processor in processors:
-        subdata = data.get(processor, data)
+        subdata = data.get(processor, None)
         if not subdata:
-            error("Missing %s info" % processor)
+            if state_only:
+                break
+            else:
+                error("Missing %s info" % processor)
         subdata[PATH] = subdata.get(PATH, path)
         subdata[PART] = subdata.get(PART, part)
         if prefix:
@@ -492,6 +496,41 @@ def all_gen(args, data=None):
 
         result[processor] = func(namespace, subdata)
 
+    if state_only:
+        ret = result[T_STATE]
+        args = prepare[T_STATE]
+        if part:
+            fullname = os.path.realpath(os.path.join(os.path.dirname(args.dest), part))
+
+            def rel(where):
+                return os.path.relpath(where, os.path.dirname(fullname))
+
+            if not os.path.exists(fullname):
+                name = os.path.basename(fullname)
+                part, _ = os.path.splitext(name)
+                code = data.get('code', '')
+                statename = rel(getattr(prepare[T_STATE], T_DEST))
+                write_content(fullname, DartTemplate('''
+%extra_import
+
+import 'package:%bloc_import';
+import 'package:equatable/equatable.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+
+part '%part.g.dart';
+part '%state';
+
+%code
+''').safe_substitute(
+                    extra_import=importcode,
+                    part=part,
+                    state=statename,
+                    code=code,
+                )
+                              )
+
+        return ret
     args = prepare[T_BLOC]
     ret = result[T_BLOC]
     if args.part:  # it's part of a state file
@@ -509,7 +548,8 @@ def all_gen(args, data=None):
             name = os.path.basename(fullname)
             part, _ = os.path.splitext(name)
             code = data.get('code', '')
-            bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC], 'useHydrate', True) \
+            bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC],
+                                                                        'useHydrate', True) \
                 else 'bloc/bloc.dart'
             write_content(fullname, DartTemplate('''
 %extra_import

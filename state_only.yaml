@@ -1,5 +1,6 @@
 part: demo.dart
-path: demo/bloc
+path: demo/state
+stateOnly: true
 state:
   name: DemoState
   equal: true
@@ -12,23 +13,3 @@ state:
     - DictError? error//error status
     - String? hint//Definition with some key words replaced
     - List<String>? similar// word that might be similar to current word
-event:
-  name: DemoEvent
-  dest: .e.dart
-  events:
-    SomeEvent:
-    FinishEvent:
-    CoolEvent:
-    ThirdEvent:
-    LastEvent:
-    EventWithProps:
-      - DictError? error///error status
-      - bool overwrite=false/// do we need to overwrite?
-    OtherEventWithProps:
-      - double cool/// again
-      - String? nothing
-
-bloc:
-  name: DemoBloc
-  dest: .b.dart
-
