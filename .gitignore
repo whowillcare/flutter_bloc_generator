@@ -3,3 +3,4 @@ demo
 *.dart
 *.log
 *.pyc
+/.idea/
