@@ -1,3 +1,10 @@
+settings:
+  l18n: l19n
+  delegate: TRDelegate
+  helper: StringHelper
+  default_object: TR
+  default_class: TS
+
 Languages:
   -   locale: en_US
       name: English

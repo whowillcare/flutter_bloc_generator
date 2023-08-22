@@ -94,6 +94,16 @@ def main(
         INTERFACE_ONLY,
         ARGS="",
 ):
+    obj = yaml.safe_load(open(YAMLFILE))
+    T_SETTINGS = 'settings'  # YAML has settings can override
+    settings = obj.get(T_SETTINGS, {})
+
+    l18n = settings.get("l18n", "l18n")  # give user to override in YAML file
+    HELPER_NAME = settings.get("helper", HELPER_NAME)
+    DEFAULT_CLS = settings.get("default_class", DEFAULT_CLS)
+    DEFAULT_OBJ = settings.get("default_object", DEFAULT_OBJ)
+    delegate = settings.get("delegate", "TRLocalizationDelegate")
+
     EXT = ".dart"
     DEFAULT_PKG = HELPER_NAME + EXT
 
@@ -170,8 +180,8 @@ def main(
     }
     %interface %default_obj = %cls.%default_obj;
     
-    class TRLocalizationDelegate extends LocalizationsDelegate<%interface> {
-      const TRLocalizationDelegate();
+    class %delegate extends LocalizationsDelegate<%interface> {
+      const %delegate();
     
       List<Locale> get supportedLocales {
         return %cls.map.keys.map(
@@ -198,12 +208,12 @@ def main(
       }
     } 
     extension LExt on BuildContext {
-      %interface get l18n => %cls.%default_obj;
+      %interface get %l18n => %cls.%default_obj;
     }
     
     '''
 
-    obj = yaml.safe_load(open(YAMLFILE))
+
     sharedPrefix = 'Shared'
     language = obj.get('Languages', None)
     strings = obj.get('Strings', None)
@@ -212,10 +222,12 @@ def main(
         print("Missing language definition")
         sys.exit(-1)
 
+
     T_NAME = 'name'
     T_LOCALE = 'locale'
     T_ALIAS = 'alias'
     T_DEFAULT = 'default'
+
     result = []
     names = []
     locales = {}  # locales to name map
@@ -290,7 +302,9 @@ def main(
                         # if there are different locale string pointing to same translation. for instance: zh_HK and zh_TW
                         alias=alias,
                         # set the default locale
-                        defaultLocale=",".join(["'%s'" % locale for locale in default_locale])
+                        defaultLocale=",".join(["'%s'" % locale for locale in default_locale]),
+                        l18n=l18n,
+                        delegate=delegate
                     )
                 )
             )

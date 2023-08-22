@@ -513,7 +513,6 @@ def all_gen(args, data=None):
                 write_content(fullname, DartTemplate('''
 %extra_import
 
-import 'package:%bloc_import';
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
