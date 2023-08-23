@@ -430,6 +430,10 @@ def event_gen(args, data=None):
         extra = ""
         final = []
         const = []
+        if en.startswith("."):  # append to basename
+            en = basename + en[1:]
+        elif en.startswith("%"):  # prepend to basename
+            en = en[1:] + basename
         if len(eps) > 0:  # extra arguments needed
             for v in eps:
                 final.append('%s\n  final %s %s' % (v.comment, v.clsname, v.name))
