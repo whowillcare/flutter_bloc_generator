@@ -31,7 +31,7 @@ if [ $? -ne 0 ] || [ ! -r "$GENPY" ];then
 fi
 YAMLFILE=${1:-strings.yaml}
 YAML=$(realpath $YAMLFILE)
-MARK=".${YAML}.last"
+MARK="${YAML}.modified"
 build=1
 if [ -f "$MARK" ];then
   if [ "$YAML" -nt "$MARK" ];then

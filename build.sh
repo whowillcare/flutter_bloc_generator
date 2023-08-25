@@ -43,7 +43,7 @@ build(){
   where=$(dirname $YAML)
   (
     cd $where
-    local MARK=".${YAML}.last"
+    local MARK="${YAML}.modified"
     local build=1
     if [ -f "$MARK" ];then
       if [ "$YAML" -nt "$MARK" ];then
