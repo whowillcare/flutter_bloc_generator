@@ -55,7 +55,7 @@ build(){
     fi
     if [ $build -eq 1 ]; then
       python $GENPY all $YAML
-      touch $MARK
+      echo -e "#Dont'change\n$(date)" > $MARK
     fi
   )
 }

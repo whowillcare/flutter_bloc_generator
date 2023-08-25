@@ -21,7 +21,7 @@ git submodule add $SOURCEGIT generator # at your project root
 fi
 cd $(dirname $PRG)
 PROJ_ROOT="../.."
-PY=${TOOL_DIR}/stategen.py
+PY=${TOOL_DIR}/l18n_gen.py
 GENPY="$(realpath $PY)"
 
 
@@ -43,5 +43,5 @@ if [ -f "$MARK" ];then
 fi
 if [ $build -eq 1 ]; then
   python $GENPY --yaml $YAML
-  touch $MARK
+  echo -e "#Dont'change\n$(date)" > $MARK
 fi
