@@ -43,4 +43,5 @@ if [ -f "$MARK" ];then
 fi
 if [ $build -eq 1 ]; then
   python $GENPY --yaml $YAML
+  touch $MARK
 fi
