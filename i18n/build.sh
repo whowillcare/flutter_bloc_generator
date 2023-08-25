@@ -21,7 +21,7 @@ git submodule add $SOURCEGIT generator # at your project root
 fi
 cd $(dirname $PRG)
 PROJ_ROOT="../.."
-PY=${TOOLDIR}/stategen.py
+PY=${TOOL_DIR}/stategen.py
 GENPY="$(realpath $PY)"
 
 
