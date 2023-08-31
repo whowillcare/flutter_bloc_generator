@@ -228,6 +228,7 @@ def event_parser(parser):
 
 
 def bloc_gen(args, data=None):
+    global EVENT_SHORTCUT
     fields = shared_fields(
         {
             'name': 'BaseBloc',
@@ -266,7 +267,27 @@ def bloc_gen(args, data=None):
         return result
 
     def event_handlers(event_name, state):
+        global EVENT_SHORTCUT
+        comma=", "
         func = '_on%s' % event_name
+        _short=""
+        _args=EVENT_SHORTCUT.get(event_name,None)
+        if _args:
+         _name,_rest=_args
+         _argdef=""
+         _arg=""
+         if len(_rest) == 2 and _rest[0]:
+           _argdef=comma.join(_rest[0])
+           _arg=comma.join(_rest[1])
+         _short=DartTemplate('''
+    %name(%argdef){
+      add(%event(%arg));
+    }''').safe_substitute(
+name=_name,
+argdef='{%s}'%_argdef if _argdef else '',
+arg=_arg
+)
+           
         return [
             DartTemplate(s).safe_substitute(
                 event=event_name,
@@ -276,7 +297,8 @@ def bloc_gen(args, data=None):
             for s in [
                 'on<%event>(%func)',
                 '   Future<void> %func(%event event, Emitter<%state> emit) '
-                'async {\n   //TODO add your code here\n   }\n'
+                'async {\n   //TODO add your code here\n   }\n',
+                _short
             ]
         ]
 
@@ -293,10 +315,15 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
    %repo
    %constructor
    %hydrate
+   %shortcut
 %event_handler
 }
 ''')
 
+    shortcut_mark = "/// shortcut functions"
+    shortcut_mark_end = "/// end shortcut"
+    def add_mark(content):
+        return "%s\n%s\n   %s\n"%(shortcut_mark, content, shortcut_mark_end)
     if not event_content:
         error("Wrong content from %s" % event_file)
     event_base, *event_classes = get_class(event_content, False)
@@ -313,13 +340,17 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
     def get_handler_func(events):
         event_funcs = []
         event_handler = []
+        event_short = []
         for event in events:
-            handler, func = event_handlers(event, state_class)
+            handler, func, short = event_handlers(event, state_class)
             event_funcs.append(func)
             event_handler.append(handler)
+            if short:
+               event_short.append(short)
         return [
             "\n".join(event_funcs + [""]),
             ";\n      ".join(event_handler + [""]),
+            "\n".join(event_short+ [""]),
 
         ]
 
@@ -332,20 +363,30 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
             def search(a):
                 return a not in exist_events
 
-            missed_events = filter(search, event_classes)
+            missed_events = list(filter(search, event_classes))
             if missed_events:
-                event_funcs_str, event_handler_str = get_handler_func(missed_events)
+                event_funcs_str, event_handler_str, short_str = get_handler_func(missed_events)
 
-                ret = re.sub(
+                if event_handler_str:
+                 ret = re.sub(
                     r'(super.*?{)',
                     r'\1\n      %s' % event_handler_str.strip(),
                     exist_content
-                )
-                ret = re.sub(
+                 )
+                if event_funcs_str:
+                 ret = re.sub(
                     r'(}\s*)$',
                     r'%s\1' % event_funcs_str,
                     ret
-                )
+                 )
+                if short_str:
+                 hasmark=ret.find(shortcut_mark) > 0
+                 shortpatter=r'(super.*?\{[^}]+\}([\s\S]*toJson\(\);)?)' if not hasmark else r'(%s\n)'%(shortcut_mark)
+                 ret = re.sub(
+                   shortpatter,
+                   r'\1\n\n    %s'% ( add_mark(short_str) if not hasmark else short_str),
+                   ret
+                 )
 
     if not ret:
         repo_var = ""
@@ -354,7 +395,9 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
             repo_var = repo_class[0].lower() + repo_class[1:]
             repo_def = '%s %s;' % (repo_class, repo_var)
             repo_var = '{required this.%s}' % repo_var
-        event_funcs_str, event_handler_str = get_handler_func(event_classes)
+        event_funcs_str, event_handler_str, shortcut = get_handler_func(event_classes)
+        if shortcut:
+            shortcut=add_mark(shortcut)
         constructor = DartTemplate('''
     %bloc_class(%repo_var) : super(const %state_class()) {
       %event_handlers
@@ -370,6 +413,7 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
             state_class=state_class,
             constructor=constructor,
             event_class=event_base,
+            shortcut=shortcut,
             repo=repo_def,
             event_handler=event_funcs_str,
             part="part of '%s';\n" % args.part if args.part else '',
@@ -388,7 +432,9 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
     return ret
 
 
+EVENT_SHORTCUT={}
 def event_gen(args, data=None):
+    global EVENT_SHORTCUT # store event shortcut -> [eventname, arguments]
     fields = shared_fields({
         'name': 'BaseEvent',
         'events': [],
@@ -430,12 +476,29 @@ def event_gen(args, data=None):
         extra = ""
         final = []
         const = []
+        shortcut = ""
+        if en.find('~') > 1: # has shortcut name
+           pattern=r'^(.+)~(.*)$'
+           result=re.findall(pattern,en)
+           if result:
+              en=result[0][0]
+              shortcut=result[0][1]
         if en.startswith("."):  # append to basename
             en = basename + en[1:]
         elif en.startswith("%"):  # prepend to basename
             en = en[1:] + basename
+        sargs=None
+        if shortcut:
+           sargs=[[],[]] # first is the argdef, second is arg
+           EVENT_SHORTCUT[en]=[shortcut,sargs]
         if len(eps) > 0:  # extra arguments needed
             for v in eps:
+                if shortcut:
+                   sargs[0].append('%s%s %s%s'%(
+                     '' if (v.value and v.value.strip()) or v.optional else 'required ',
+                     v.clsname,v.name,v.value
+                   ))
+                   sargs[1].append('%s: %s'%(v.name,v.name))
                 final.append('%s\n  final %s %s' % (v.comment, v.clsname, v.name))
                 const.append(
                     '%s this.%s%s' % (
@@ -611,3 +674,4 @@ def main():
 
 if __name__ == '__main__':
     print(main())
+    print(EVENT_SHORTCUT)
