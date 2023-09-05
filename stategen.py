@@ -362,7 +362,7 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
         if exist_events and exist_event_funcs:
             def search(a):
                 return a not in exist_events
-
+            ret = exist_content
             missed_events = list(filter(search, event_classes))
             if missed_events:
                 event_funcs_str, event_handler_str, short_str = get_handler_func(missed_events)
