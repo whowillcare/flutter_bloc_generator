@@ -280,7 +280,7 @@ def bloc_gen(args, data=None):
            _argdef=comma.join(_rest[0])
            _arg=comma.join(_rest[1])
          _short=DartTemplate('''
-    %name(%argdef){
+    void %name(%argdef){
       add(%event(%arg));
     }''').safe_substitute(
 name=_name,
