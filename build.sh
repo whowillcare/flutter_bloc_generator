@@ -4,6 +4,16 @@ fail(){
   echo -e "$@" >&2
   exit 1
 }
+if PYTHON=$(which python3);then
+  echo "Using $PYTHON"
+elif PYTHON=$(which python); then
+  V=$($PYTHON -V)
+  if [ "$V" = "${V:Python 3}" ];then
+    fail "We need python 3, you got $V"
+  fi
+else
+  fail "Couldn't find right python to use"
+fi
 SOURCEGIT=git@github.com:whowillcare/flutter_bloc_generator.git
 PRG=$0
 TOOL_DIR=../../../flutter_bloc_gen
@@ -54,7 +64,7 @@ build(){
       fi
     fi
     if [ $build -eq 1 ]; then
-      python $GENPY all $YAML && echo -e "Don't change\n$(date)" > $MARK
+      $PYTHON $GENPY all $YAML && echo -e "Don't change\n$(date)" > $MARK
     fi
   )
 }
