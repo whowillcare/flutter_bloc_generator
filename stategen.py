@@ -67,7 +67,9 @@ def state_gen(args, data=None):
         'init': False,
         'name': None,
         'jsonConverter': '',
-        'props': []
+        'props': [],
+        'exclude' : None, # can exclude certain props that matches this pattern
+        'include' : '^.*$'  # default include all props
     }
     )
     sync_data(args, fields, data)
@@ -103,7 +105,10 @@ def state_gen(args, data=None):
         copyWithArgs.append('%s? %s' % (v.cls, v.name))
         copyWithBody.append(DartTemplate('%name: %name ?? this.%name').safe_substitute(name=v.name))
         if args.equal:
-            props.append(v.name)
+            to_append = v.name
+            if args.include and not re.match(args.include, to_append): continue
+            if args.exclude and re.match(args.exclude, to_append): continue
+            props.append(to_append)
 
     ret = DartTemplate("""
 %part

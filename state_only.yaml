@@ -5,6 +5,7 @@ state:
   name: DemoState
   equal: true
   dest: .d.dart
+  exclude: 'error|hint'
   props:
     - 'DictWord word=const DictWord(word: "")'
     - DictStatus status=DictStatus.init// current word status
