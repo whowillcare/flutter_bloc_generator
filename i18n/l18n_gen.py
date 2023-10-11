@@ -207,7 +207,7 @@ def main(
         return %cls.supportedLocale(locale) != null;
       }
     } 
-    extension LExt on BuildContext {
+    extension LExt%l18n on BuildContext {
       %interface get %l18n => %cls.%default_obj;
     }
     
