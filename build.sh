@@ -16,11 +16,14 @@ else
 fi
 SOURCEGIT=git@github.com:whowillcare/flutter_bloc_generator.git
 PRG=$0
+PROJ_ROOT="../.."
 TOOL_DIR=../../../flutter_bloc_gen
 LINK=$(readlink $PRG)
 if [ -n "$LINK" ];then
   # it's a symbolic link
   TOOL_DIR=$(dirname $LINK)
+  # assume TOOL_DIR is always one dir below the PROJECT_ROOT
+  PROJ_ROOT="$TOOL_DIR/../"
 else
   fail "
 You need to run:
@@ -30,7 +33,6 @@ git submodule add $SOURCEGIT generator # at your project root
 "
 fi
 cd $(dirname $PRG)
-PROJ_ROOT="../.."
 PY=${TOOL_DIR}/stategen.py
 GENPY="$(realpath $PY)"
 
