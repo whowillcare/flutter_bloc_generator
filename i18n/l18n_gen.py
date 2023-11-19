@@ -132,6 +132,10 @@ def main(
     SIMPLEHELPER = NOTES + '''
     import 'dart:io';
     import 'package:flutter/material.dart';
+    import 'package:flutter/foundation.dart'
+        show kIsWeb;
+    import 'dart:ui' as ui;
+
     %extra
 
     // where the auto generated language implementations
@@ -167,7 +171,13 @@ def main(
       }
       static %interface get %default_obj  {
         if (currentLocale == null) {
-          final PL = Platform.localeName.replaceAll(r'\.*$',"").split('_');
+          String locale = '';
+          if (kIsWeb){
+            locale = ui.window.locale.toLanguageTag();
+          }else {
+            locale = Platform.localeName;
+          }
+          final PL = locale.replaceAll(r'\.*$',"").split('_');
           currentLocale = Locale(PL[0],PL.length > 1 ? PL[1] : null) ;
         }
         final cls = supportedLocale(currentLocale!);
