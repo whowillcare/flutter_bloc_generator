@@ -316,7 +316,7 @@ arg=_arg
 
     bloc_template = DartTemplate('''
 %part
-class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
+class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
    %repo
    %constructor
    %hydrate
@@ -422,7 +422,8 @@ class %bloc_class extends Bloc<%event_class, %state_class>%mixins{
             repo=repo_def,
             event_handler=event_funcs_str,
             part="part of '%s';\n" % args.part if args.part else '',
-            mixins=" with HydratedMixin" if args.useHydrate else "",
+            # mixins=" with HydratedMixin" if args.useHydrate else "",
+            mixins="Hydrated" if args.useHydrate else "",
             hydrate=DartTemplate("""
    @override
    %state_class? fromJson(Map<String, dynamic> json)=>%state_class.fromJson(json);
