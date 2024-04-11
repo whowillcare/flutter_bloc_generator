@@ -12,6 +12,10 @@ T_BLOC = 'bloc'
 T_DEST = 'dest'
 T_PREFIX = 'prefix'  # if YAML has prefix key, add all the classes with this prefix
 T_NAME = 'name'
+T_PART = 'part'
+T_PATH = 'path'
+T_CODE = 'code'
+T_PARTCODE = T_PART + T_CODE
 
 
 class Vars:
@@ -68,8 +72,8 @@ def state_gen(args, data=None):
         'name': None,
         'jsonConverter': '',
         'props': [],
-        'exclude' : None, # can exclude certain props that matches this pattern
-        'include' : '^.*$'  # default include all props
+        'exclude': None,  # can exclude certain props that matches this pattern
+        'include': '^.*$'  # default include all props
     }
     )
     sync_data(args, fields, data)
@@ -273,26 +277,26 @@ def bloc_gen(args, data=None):
 
     def event_handlers(event_name, state):
         global EVENT_SHORTCUT
-        comma=", "
+        comma = ", "
         func = '_on%s' % event_name
-        _short=""
-        _args=EVENT_SHORTCUT.get(event_name,None)
+        _short = ""
+        _args = EVENT_SHORTCUT.get(event_name, None)
         if _args:
-         _name,_rest=_args
-         _argdef=""
-         _arg=""
-         if len(_rest) == 2 and _rest[0]:
-           _argdef=comma.join(_rest[0])
-           _arg=comma.join(_rest[1])
-         _short=DartTemplate('''
+            _name, _rest = _args
+            _argdef = ""
+            _arg = ""
+            if len(_rest) == 2 and _rest[0]:
+                _argdef = comma.join(_rest[0])
+                _arg = comma.join(_rest[1])
+            _short = DartTemplate('''
     void %name(%argdef){
       add(%event(%arg));
     }''').safe_substitute(
-name=_name,
-argdef='{%s}'%_argdef if _argdef else '',
-arg=_arg
-)
-           
+                name=_name,
+                argdef='{%s}' % _argdef if _argdef else '',
+                arg=_arg
+            )
+
         return [
             DartTemplate(s).safe_substitute(
                 event=event_name,
@@ -327,8 +331,10 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
 
     shortcut_mark = "/// shortcut functions"
     shortcut_mark_end = "/// end shortcut"
+
     def add_mark(content):
-        return "%s\n%s\n   %s\n"%(shortcut_mark, content, shortcut_mark_end)
+        return "%s\n%s\n   %s\n" % (shortcut_mark, content, shortcut_mark_end)
+
     if not event_content:
         error("Wrong content from %s" % event_file)
     event_base, *event_classes = get_class(event_content, False)
@@ -351,11 +357,11 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
             event_funcs.append(func)
             event_handler.append(handler)
             if short:
-               event_short.append(short)
+                event_short.append(short)
         return [
             "\n".join(event_funcs + [""]),
             ";\n      ".join(event_handler + [""]),
-            "\n".join(event_short+ [""]),
+            "\n".join(event_short + [""]),
 
         ]
 
@@ -367,31 +373,33 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
         if exist_events and exist_event_funcs:
             def search(a):
                 return a not in exist_events
+
             ret = exist_content
             missed_events = list(filter(search, event_classes))
             if missed_events:
                 event_funcs_str, event_handler_str, short_str = get_handler_func(missed_events)
 
                 if event_handler_str:
-                 ret = re.sub(
-                    r'(super.*?{)',
-                    r'\1\n      %s' % event_handler_str.strip(),
-                    exist_content
-                 )
+                    ret = re.sub(
+                        r'(super.*?{)',
+                        r'\1\n      %s' % event_handler_str.strip(),
+                        exist_content
+                    )
                 if event_funcs_str:
-                 ret = re.sub(
-                    r'(}\s*)$',
-                    r'%s\1' % event_funcs_str,
-                    ret
-                 )
+                    ret = re.sub(
+                        r'(}\s*)$',
+                        r'%s\1' % event_funcs_str,
+                        ret
+                    )
                 if short_str:
-                 hasmark=ret.find(shortcut_mark) > 0
-                 shortpatter=r'(super.*?\{[^}]+\}([\s\S]*toJson\(\);)?)' if not hasmark else r'(%s\n)'%(shortcut_mark)
-                 ret = re.sub(
-                   shortpatter,
-                   r'\1\n\n    %s'% ( add_mark(short_str) if not hasmark else short_str),
-                   ret
-                 )
+                    hasmark = ret.find(shortcut_mark) > 0
+                    shortpatter = r'(super.*?\{[^}]+\}([\s\S]*toJson\(\);)?)' if not hasmark else r'(%s\n)' % (
+                        shortcut_mark)
+                    ret = re.sub(
+                        shortpatter,
+                        r'\1\n\n    %s' % (add_mark(short_str) if not hasmark else short_str),
+                        ret
+                    )
 
     if not ret:
         repo_var = ""
@@ -402,7 +410,7 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
             repo_var = '{required this.%s}' % repo_var
         event_funcs_str, event_handler_str, shortcut = get_handler_func(event_classes)
         if shortcut:
-            shortcut=add_mark(shortcut)
+            shortcut = add_mark(shortcut)
         constructor = DartTemplate('''
     %bloc_class(%repo_var) : super(const %state_class()) {
       %event_handlers
@@ -438,9 +446,11 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
     return ret
 
 
-EVENT_SHORTCUT={}
+EVENT_SHORTCUT = {}
+
+
 def event_gen(args, data=None):
-    global EVENT_SHORTCUT # store event shortcut -> [eventname, arguments]
+    global EVENT_SHORTCUT  # store event shortcut -> [eventname, arguments]
     fields = shared_fields({
         'name': 'BaseEvent',
         'events': [],
@@ -483,28 +493,28 @@ def event_gen(args, data=None):
         final = []
         const = []
         shortcut = ""
-        if en.find('~') > 1: # has shortcut name
-           pattern=r'^(.+)~(.*)$'
-           result=re.findall(pattern,en)
-           if result:
-              en=result[0][0]
-              shortcut=result[0][1]
+        if en.find('~') > 1:  # has shortcut name
+            pattern = r'^(.+)~(.*)$'
+            result = re.findall(pattern, en)
+            if result:
+                en = result[0][0]
+                shortcut = result[0][1]
         if en.startswith("."):  # append to basename
             en = basename + en[1:]
         elif en.startswith("%"):  # prepend to basename
             en = en[1:] + basename
-        sargs=None
+        sargs = None
         if shortcut:
-           sargs=[[],[]] # first is the argdef, second is arg
-           EVENT_SHORTCUT[en]=[shortcut,sargs]
+            sargs = [[], []]  # first is the argdef, second is arg
+            EVENT_SHORTCUT[en] = [shortcut, sargs]
         if len(eps) > 0:  # extra arguments needed
             for v in eps:
                 if shortcut:
-                   sargs[0].append('%s%s %s%s'%(
-                     '' if (v.value and v.value.strip()) or v.optional else 'required ',
-                     v.clsname,v.name,v.value
-                   ))
-                   sargs[1].append('%s: %s'%(v.name,v.name))
+                    sargs[0].append('%s%s %s%s' % (
+                        '' if (v.value and v.value.strip()) or v.optional else 'required ',
+                        v.clsname, v.name, v.value
+                    ))
+                    sargs[1].append('%s: %s' % (v.name, v.name))
                 final.append('%s\n  final %s %s' % (v.comment, v.clsname, v.name))
                 const.append(
                     '%s this.%s%s' % (
@@ -530,12 +540,29 @@ def event_gen(args, data=None):
     return ret
 
 
+def get_code(data, fullname):
+    def rel(where):
+        return os.path.relpath(where, os.path.dirname(fullname))
+
+    code = data.get(T_CODE, '')
+    partcode = data.get(T_PARTCODE, '')
+    if not code and partcode:  # code is empty, part code is not
+        name = os.path.basename(fullname)
+        part, _ = os.path.splitext(name)
+        partfile = '%s.c.dart' % part
+        code = "part '%s';" % partfile
+        partwhere = os.path.join(os.path.dirname(fullname), partfile)
+        if not os.path.exists(partwhere):
+            write_content(partwhere, "part of '%s.dart';" % part)
+    return code
+
+
 def all_gen(args, data=None):
     if not data:
         data = {}
     processors = [T_STATE, T_EVENT, T_BLOC]
-    PART = 'part'
-    PATH = 'path'
+    PART = T_PART
+    PATH = T_PATH
     IMPORT = 'import'
     prefix = data.get(T_PREFIX, '')
     part = data.get(PART, '')
@@ -581,7 +608,7 @@ def all_gen(args, data=None):
             if not os.path.exists(fullname):
                 name = os.path.basename(fullname)
                 part, _ = os.path.splitext(name)
-                code = data.get('code', '')
+                code = get_code(data, fullname)
                 statename = rel(getattr(prepare[T_STATE], T_DEST))
                 write_content(fullname, DartTemplate('''
 %extra_import
@@ -619,7 +646,7 @@ part '%state';
             print("%s is not there, we will create it" % fullname)
             name = os.path.basename(fullname)
             part, _ = os.path.splitext(name)
-            code = data.get('code', '')
+            code = get_code(data, fullname)
             bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC],
                                                                         'useHydrate', True) \
                 else 'bloc/bloc.dart'
