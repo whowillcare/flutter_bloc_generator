@@ -16,7 +16,7 @@ T_PART = 'part'
 T_PATH = 'path'
 T_CODE = 'code'
 T_PARTCODE = T_PART + T_CODE
-
+T_USEREPLAY = 'useReplay'
 
 class Vars:
     comm = r'(//.*$)'
@@ -228,11 +228,16 @@ def bloc_parser(parser):
                         , required=False)
     parser.add_argument('-U', '--useHydrate', action='store_true',
                         help="Specify if to use hydrate mixins or not")
+    parser.add_argument('-u', '--useReplay', action='store_false',
+                        help="Specify if to use replay or not")
+
     shared_parser(parser)
 
 
 def event_parser(parser):
     parser.add_argument('-E', '--events', nargs='+', required=False, help="All the events names")
+    parser.add_argument('-u', '--useReplay', action='store_false',
+                        help="Specify if to use replay or not")
     shared_parser(parser)
 
 
@@ -245,7 +250,7 @@ def bloc_gen(args, data=None):
             'state_file': None,  # need to have one
             'event_file': None,
             'repo_file': None,
-            'useReplay': False,  # allow using replay mixins
+            T_USEREPLAY: False,  # allow using replay mixins
         }
     )
     sync_data(args, fields, data)
@@ -456,6 +461,7 @@ def event_gen(args, data=None):
     global EVENT_SHORTCUT  # store event shortcut -> [eventname, arguments]
     fields = shared_fields({
         'name': 'BaseEvent',
+        T_USEREPLAY: False,  # allow using replay mixins
         'events': [],
     }
     )
@@ -465,6 +471,7 @@ def event_gen(args, data=None):
     events = args.events
     DELI = '#'
     eventname = ''
+    replay_event = ' implements ReplayEvent' if args.useReplay else ''
 
     def convert_to_var(inp):
         return Vars(inp)
@@ -485,7 +492,7 @@ def event_gen(args, data=None):
             vs.setdefault(eventname, []).append(convert_to_var(v))
 
     basename = args.name
-    ret = "abstract class %s {}\n\n" % basename
+    ret = "abstract class %s%s {}\n\n" % (basename, replay_event)
     event_template = '''class %event_name extends %base_name {
     %extra
 }    
@@ -574,6 +581,10 @@ def all_gen(args, data=None):
     prepare = {}
     result = {}
     state_only = data.get('stateOnly', None)
+    use_replay = data.get(T_BLOC, {}).get(T_USEREPLAY, False)
+    if use_replay:
+        sub = data[T_EVENT] or {}
+        sub[T_USEREPLAY] = use_replay
     for processor in processors:
         subdata = data.get(processor, None)
         if not subdata:
@@ -596,7 +607,6 @@ def all_gen(args, data=None):
             event_file = 'event_file'
             subdata[state_file] = subdata.get(state_file, getattr(prepare[T_STATE], T_DEST, None))
             subdata[event_file] = subdata.get(event_file, getattr(prepare[T_EVENT], T_DEST, None))
-
         result[processor] = func(namespace, subdata)
 
     if state_only:
@@ -653,7 +663,7 @@ part '%state';
             bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC],
                                                                         'useHydrate', True) \
                 else 'bloc/bloc.dart'
-            if getattr(prepare[T_BLOC], 'useReplay', True):
+            if getattr(prepare[T_BLOC], T_USEREPLAY, True):
                 importcode += "\nimport 'package:replay_bloc/replay_bloc.dart';"
             write_content(fullname, DartTemplate('''
 %extra_import
