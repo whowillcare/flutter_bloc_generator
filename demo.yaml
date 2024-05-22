@@ -36,3 +36,5 @@ event:
 bloc:
   name: DemoBloc
   dest: .b.dart
+  useHydrate: false
+  useReplay: true

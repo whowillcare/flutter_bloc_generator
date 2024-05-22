@@ -245,6 +245,7 @@ def bloc_gen(args, data=None):
             'state_file': None,  # need to have one
             'event_file': None,
             'repo_file': None,
+            'useReplay': False,  # allow using replay mixins
         }
     )
     sync_data(args, fields, data)
@@ -259,6 +260,7 @@ def bloc_gen(args, data=None):
     repo_file = args.repo_file
     dest_file = args.dest
     bloc_class = args.name
+    replay_mixins = ' with ReplayBlocMixin' if args.useReplay else ''
 
     def load_content(name):
         ret = None
@@ -320,7 +322,7 @@ def bloc_gen(args, data=None):
 
     bloc_template = DartTemplate('''
 %part
-class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
+class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>%replay_mixins{
    %repo
    %constructor
    %hydrate
@@ -432,6 +434,7 @@ class %bloc_class extends %{mixins}Bloc<%event_class, %state_class>{
             part="part of '%s';\n" % args.part if args.part else '',
             # mixins=" with HydratedMixin" if args.useHydrate else "",
             mixins="Hydrated" if args.useHydrate else "",
+            replay_mixins=replay_mixins,
             hydrate=DartTemplate("""
    @override
    %state_class? fromJson(Map<String, dynamic> json)=>%state_class.fromJson(json);
@@ -650,6 +653,8 @@ part '%state';
             bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC],
                                                                         'useHydrate', True) \
                 else 'bloc/bloc.dart'
+            if getattr(prepare[T_BLOC], 'useReplay', True):
+                importcode += "\nimport 'package:replay_bloc/replay_bloc.dart';"
             write_content(fullname, DartTemplate('''
 %extra_import
 
