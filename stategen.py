@@ -17,6 +17,9 @@ T_PATH = 'path'
 T_CODE = 'code'
 T_PARTCODE = T_PART + T_CODE
 T_USEREPLAY = 'useReplay'
+T_EQUATABLE = 'Equatable'
+T_EQUAL = 'equal'
+T_PARENT = 'parent'
 
 class Vars:
     comm = r'(//.*$)'
@@ -67,7 +70,8 @@ def error(*msg):
 
 def state_gen(args, data=None):
     fields = shared_fields({
-        'equal': True,
+        T_EQUAL: True,
+        T_PARENT: '',
         'init': False,
         'name': None,
         'jsonConverter': '',
@@ -84,6 +88,8 @@ def state_gen(args, data=None):
     if not args.props:
         error("We need some properties")
 
+    parent = args.parent
+    parent_class = T_EQUATABLE if args.equal else ''
     vars = []
     for v in args.props:
         vars.append(Vars(v))
@@ -114,6 +120,27 @@ def state_gen(args, data=None):
             if args.exclude and re.match(args.exclude, to_append): continue
             props.append(to_append)
 
+    if parent:  # parent class specified, and should be a reachable relative path
+        parent_content = load_content(parent)
+        if parent_content:
+            result = get_class(parent_content, True)
+            if result:
+                parent_class = result
+                args.equal = True
+                # properties defined in parent_class
+                keys_pattern = r'final\s+(\S*?)(\?){0,1}\s+(\S+);'
+                result = re.findall(keys_pattern, parent_content)
+                if result:
+                    for (key_type, optional, key) in result:
+                        const.append('%ssuper.%s' %
+                                     ('' if optional else 'required ', key))
+                        copyWithArgs.append('%s? %s' % (key_type, key))
+                        copyWithBody.append(DartTemplate('%name: %name ?? this.%name').safe_substitute(name=key))
+                    props.append('...super.props')
+
+        else:
+            error("%s specified but not existent or no content" % parent)
+    ext = 'extends %s' % parent_class if parent_class else ''
     ret = DartTemplate("""
 %part
 @JsonSerializable(explicitToJson: true)
@@ -144,7 +171,7 @@ class %clsname %ext {
         copyWithBody=',\n      '.join(copyWithBody),
         props='@override\n  List<Object?> get props => [\n    %s\n];\n' % (
             ',\n    '.join(props)) if args.equal else '',
-        ext='extends Equatable' if args.equal else '',
+        ext=ext,
         fact=fact,
         part="part of '%s';\n" % args.part if args.part else '',
         init=init,
@@ -214,8 +241,11 @@ def state_parser(parser):
                         help="Specify special Object converter")
     parser.add_argument('-p', '--props', nargs='+', required=False,
                         help='Specify all possible props, delimited by ')
-    parser.add_argument('-E', '--equal',
+    parser.add_argument('-E', '--%s' % T_EQUAL,
                         help='Extends from equatable', action='store_true')
+    parser.add_argument('--%s' % T_PARENT,
+                        help="Add extends from parent class other than Equatable",
+                        required=False)
     shared_parser(parser)
 
 
@@ -239,6 +269,23 @@ def event_parser(parser):
     parser.add_argument('-u', '--useReplay', action='store_false',
                         help="Specify if to use replay or not")
     shared_parser(parser)
+
+
+def load_content(name):
+    ret = None
+    if name and os.path.exists(name):
+        with open(name) as f:
+            ret = f.read()
+    return ret
+
+
+def get_class(content, first=True):
+    if not content:
+        return
+    result = re.findall(r'class\s+(\w+)\s*(?:extends .*?)*\s*{', content)
+    if result and first:
+        return result[0]
+    return result
 
 
 def bloc_gen(args, data=None):
@@ -266,21 +313,6 @@ def bloc_gen(args, data=None):
     dest_file = args.dest
     bloc_class = args.name
     replay_mixins = ' with ReplayBlocMixin' if args.useReplay else ''
-
-    def load_content(name):
-        ret = None
-        if name and os.path.exists(name):
-            with open(name) as f:
-                ret = f.read()
-        return ret
-
-    def get_class(content, first=True):
-        if not content:
-            return
-        result = re.findall(r'class\s+(\w+)\s*(?:extends .*?)*\s*{', content)
-        if result and first:
-            return result[0]
-        return result
 
     def event_handlers(event_name, state):
         global EVENT_SHORTCUT
@@ -576,6 +608,15 @@ def all_gen(args, data=None):
     IMPORT = 'import'
     prefix = data.get(T_PREFIX, '')
     part = data.get(PART, '')
+    if not part:
+        error("%s is mandatory argument in your YAML file" % PART)
+
+    def get_fullname(dest, mypart=part):
+        return os.path.realpath(os.path.join(os.path.dirname(dest), mypart))
+
+    def get_rel(where, full_name):
+        return os.path.relpath(where, os.path.dirname(full_name))
+
     path = data.get(PATH, '')
     importcode = data.get(IMPORT, '')
     prepare = {}
@@ -585,6 +626,22 @@ def all_gen(args, data=None):
     if use_replay:
         sub = data[T_EVENT] or {}
         sub[T_USEREPLAY] = use_replay
+    state_data = data.get(T_STATE, None)
+    if T_PARENT in state_data:  # has parent
+        parent_file = state_data.get(T_PARENT, '')
+        dest = state_data.get(T_DEST, data.get(T_BLOC, {}).get(T_DEST, ''))
+        fullname = get_fullname(path + os.path.sep, dest)
+        real_file = get_fullname(fullname, parent_file)
+        if os.path.exists(real_file):
+            state_data[T_PARENT] = real_file
+        else:
+            error("%s specified, but %s's content is not there"%(T_PARENT, parent_file))
+        importcode = "import '%s';\n%s" % (parent_file, importcode)
+    equal = True  # default to use equal
+    if T_EQUAL in state_data:  # use equal
+        equal = state_data.get(T_EQUAL, None)
+    if equal:
+        importcode = "import '%s';\n%s" % ('package:equatable/equatable.dart', importcode)
     for processor in processors:
         subdata = data.get(processor, None)
         if not subdata:
@@ -613,10 +670,10 @@ def all_gen(args, data=None):
         ret = result[T_STATE]
         args = prepare[T_STATE]
         if part:
-            fullname = os.path.realpath(os.path.join(os.path.dirname(args.dest), part))
+            fullname = get_fullname(args.dest)
 
             def rel(where):
-                return os.path.relpath(where, os.path.dirname(fullname))
+                return get_rel(where, fullname)
 
             if not os.path.exists(fullname):
                 name = os.path.basename(fullname)
@@ -626,7 +683,6 @@ def all_gen(args, data=None):
                 write_content(fullname, DartTemplate('''
 %extra_import
 
-import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 
@@ -646,10 +702,10 @@ part '%state';
     args = prepare[T_BLOC]
     ret = result[T_BLOC]
     if args.part:  # it's part of a state file
-        fullname = os.path.realpath(os.path.join(os.path.dirname(args.dest), args.part))
+        fullname = get_fullname(args.dest, args.part)
 
         def rel(where):
-            return os.path.relpath(where, os.path.dirname(fullname))
+            return get_rel(where, fullname)
 
         blocname = rel(args.dest)
         statename = rel(getattr(prepare[T_STATE], T_DEST))
