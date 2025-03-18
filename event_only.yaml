@@ -1,0 +1,21 @@
+path: demo
+event:
+  name: DemoEvent
+  dest: event.dart
+  events:
+    SomeEvent:
+    FinishEvent:
+    CoolEvent:
+    ThirdEvent:
+    LastEvent~last:
+    EventWithProps~props:
+      - DictError? error///error status
+      - bool overwrite=false/// do we need to overwrite?
+    OtherEventWithProps~other:
+      - double cool/// again
+      - String? nothing
+    .Cool~cool:
+      - int a=1
+      - bool? ok/// ok ?
+    .Extra~extra:
+      - String yes

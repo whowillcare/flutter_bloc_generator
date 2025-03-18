@@ -65,8 +65,9 @@ build(){
         build=0
       fi
     fi
+    local action=all
     if [ $build -eq 1 ]; then
-      $PYTHON $GENPY all $YAML && echo -e "Don't change\n$(date)" > $MARK
+      $PYTHON $GENPY $action $YAML && echo -e "Don't change\n$(date)" > $MARK
     fi
   )
 }

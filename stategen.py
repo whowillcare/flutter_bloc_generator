@@ -773,6 +773,10 @@ def main():
     if args.YAML and os.path.exists(args.YAML):
         with open(args.YAML, 'r') as f:
             data = yaml.safe_load(f)
+        if not hasattr(data,T_BLOC) and not hasattr(data,T_STATE): # it's a event only
+            subdata = data.get(T_EVENT, {})
+            del data[T_EVENT]
+            return event_gen(args,data={**data,**subdata})
     return args.func(args, data=data.get(args.subcommand, data))
 
 
