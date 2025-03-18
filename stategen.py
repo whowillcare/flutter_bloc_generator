@@ -524,7 +524,7 @@ def event_gen(args, data=None):
             vs.setdefault(eventname, []).append(convert_to_var(v))
 
     basename = args.name
-    ret = "abstract class %s%s {}\n\n" % (basename, replay_event)
+    ret = "sealed class %s%s {}\n\n" % (basename, replay_event)
     event_template = '''class %event_name extends %base_name {
     %extra
 }    
