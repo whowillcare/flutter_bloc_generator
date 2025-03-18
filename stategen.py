@@ -622,12 +622,16 @@ def all_gen(args, data=None):
     prepare = {}
     result = {}
     state_only = data.get('stateOnly', None)
+    event_only = data.get('eventOnly', None)
+    if event_only:
+        processors = [T_EVENT]
     use_replay = data.get(T_BLOC, {}).get(T_USEREPLAY, False)
     if use_replay:
         sub = data[T_EVENT] or {}
         sub[T_USEREPLAY] = use_replay
     state_data = data.get(T_STATE, None)
-    if T_PARENT in state_data:  # has parent
+    if state_data:
+     if T_PARENT in state_data:  # has parent
         parent_file = state_data.get(T_PARENT, '')
         dest = state_data.get(T_DEST, data.get(T_BLOC, {}).get(T_DEST, ''))
         fullname = get_fullname(path + os.path.sep, dest)
@@ -637,10 +641,10 @@ def all_gen(args, data=None):
         else:
             error("%s specified, but %s's content is not there"%(T_PARENT, parent_file))
         importcode = "import '%s';\n%s" % (parent_file, importcode)
-    equal = True  # default to use equal
-    if T_EQUAL in state_data:  # use equal
+     equal = True  # default to use equal
+     if T_EQUAL in state_data:  # use equal
         equal = state_data.get(T_EQUAL, None)
-    if equal:
+     if equal:
         importcode = "import '%s';\n%s" % ('package:equatable/equatable.dart', importcode)
     for processor in processors:
         subdata = data.get(processor, None)
@@ -666,9 +670,10 @@ def all_gen(args, data=None):
             subdata[event_file] = subdata.get(event_file, getattr(prepare[T_EVENT], T_DEST, None))
         result[processor] = func(namespace, subdata)
 
-    if state_only:
-        ret = result[T_STATE]
-        args = prepare[T_STATE]
+    if state_only or event_only:
+        KEY = T_STATE if state_only else T_EVENT
+        ret = result[KEY]
+        args = prepare[KEY]
         if part:
             fullname = get_fullname(args.dest)
 
@@ -679,8 +684,8 @@ def all_gen(args, data=None):
                 name = os.path.basename(fullname)
                 part, _ = os.path.splitext(name)
                 code = get_code(data, fullname)
-                statename = rel(getattr(prepare[T_STATE], T_DEST))
-                write_content(fullname, DartTemplate('''
+                statename = rel(getattr(prepare[KEY], T_DEST))
+                template = '''
 %extra_import
 
 import 'package:json_annotation/json_annotation.dart';
@@ -690,14 +695,19 @@ part '%part.g.dart';
 part '%state';
 
 %code
-''').safe_substitute(
+''' if state_only else '''
+%extra_import
+part '%state';
+
+%code
+'''
+                write_content(fullname, DartTemplate(template).safe_substitute(
                     extra_import=importcode,
                     part=part,
                     state=statename,
                     code=code,
                 )
-                              )
-
+            )
         return ret
     args = prepare[T_BLOC]
     ret = result[T_BLOC]
@@ -773,10 +783,8 @@ def main():
     if args.YAML and os.path.exists(args.YAML):
         with open(args.YAML, 'r') as f:
             data = yaml.safe_load(f)
-        if not hasattr(data,T_BLOC) and not hasattr(data,T_STATE): # it's a event only
-            subdata = data.get(T_EVENT, {})
-            del data[T_EVENT]
-            return event_gen(args,data={**data,**subdata})
+        if (T_BLOC not in data) and (T_STATE not in data): # it's a event only
+            data['eventOnly'] = True
     return args.func(args, data=data.get(args.subcommand, data))
 
 

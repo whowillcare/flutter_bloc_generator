@@ -1,7 +1,9 @@
-path: demo
+part: demo.dart
+path: demo/event
+partcode: true
 event:
   name: DemoEvent
-  dest: event.dart
+  dest: .e.dart
   events:
     SomeEvent:
     FinishEvent:
