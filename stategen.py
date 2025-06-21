@@ -634,7 +634,8 @@ def all_gen(args, data=None):
     if use_replay:
         sub = data[T_EVENT] or {}
         sub[T_USEREPLAY] = use_replay
-    state_data = data.get(T_STATE, None)
+    state_data = data.get(T_STATE, {})
+    need_part = state_data.get('useJson', None) or data.get(T_BLOC,{}).get('useHydrate', None)
     if state_data:
      if T_PARENT in state_data:  # has parent
         parent_file = state_data.get(T_PARENT, '')
@@ -652,7 +653,7 @@ def all_gen(args, data=None):
      if equal:
         importcode = "import '%s';\n%s" % ('package:equatable/equatable.dart', importcode)
     for processor in processors:
-        subdata = data.get(processor, None)
+        subdata = data.get(processor, {})
         if not subdata:
             if state_only:
                 break
@@ -688,6 +689,7 @@ def all_gen(args, data=None):
             if not os.path.exists(fullname):
                 name = os.path.basename(fullname)
                 part, _ = os.path.splitext(name)
+                part_g = "part '%s.g.dart';" % part if need_part else ''
                 code = get_code(data, fullname)
                 statename = rel(getattr(prepare[KEY], T_DEST))
                 template = '''
@@ -696,7 +698,7 @@ def all_gen(args, data=None):
 import 'package:json_annotation/json_annotation.dart';
 
 
-part '%part.g.dart';
+%part_g
 part '%state';
 
 %code
@@ -708,6 +710,7 @@ part '%state';
 '''
                 write_content(fullname, DartTemplate(template).safe_substitute(
                     extra_import=importcode,
+                    part_g=part_g,
                     part=part,
                     state=statename,
                     code=code,
@@ -730,6 +733,7 @@ part '%state';
             print("%s is not there, we will create it" % fullname)
             name = os.path.basename(fullname)
             part, _ = os.path.splitext(name)
+            part_g = "part '%s.g.dart';" % part if need_part else ''
             code = get_code(data, fullname)
             bloc_import = 'hydrated_bloc/hydrated_bloc.dart' if getattr(prepare[T_BLOC],
                                                                         'useHydrate', True) \
@@ -745,7 +749,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 %repo_file
 
-part '%part.g.dart';
+%part_g
 part '%state';
 part '%event';
 part '%bloc';
@@ -754,6 +758,7 @@ part '%bloc';
 ''').safe_substitute(
                 extra_import=importcode,
                 repo_file="import '%s';" % rel(repo_file) if repo_file else "",
+                part_g=part_g,
                 part=part,
                 state=statename,
                 event=eventname,
