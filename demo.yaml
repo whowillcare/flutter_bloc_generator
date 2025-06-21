@@ -4,6 +4,7 @@ state:
   name: DemoState
   equal: true
   dest: .d.dart
+  useJson: true
   props:
     - 'DictWord word=const DictWord(word: "")'
     - DictStatus status=DictStatus.init// current word status

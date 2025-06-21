@@ -77,7 +77,8 @@ def state_gen(args, data=None):
         'jsonConverter': '',
         'props': [],
         'exclude': None,  # can exclude certain props that matches this pattern
-        'include': '^.*$'  # default include all props
+        'include': '^.*$',  # default include all props
+        'useJson' : True
     }
     )
     sync_data(args, fields, data)
@@ -97,7 +98,7 @@ def state_gen(args, data=None):
     final = []
     const = []
     fact = 'factory %clsname.fromJson(Map<String,dynamic> json)=>_$%clsnameFromJson(json);\n  Map<String, dynamic> toJson() => _$%clsnameToJson(this);\n'.replace(
-        '%clsname', args.name)
+        '%clsname', args.name) if args.useJson else ''
     copyWithArgs = []
     copyWithBody = []
     props = []
@@ -143,7 +144,7 @@ def state_gen(args, data=None):
     ext = 'extends %s' % parent_class if parent_class else ''
     ret = DartTemplate("""
 %part
-@JsonSerializable(explicitToJson: true)
+%serial
 %converter
 class %clsname %ext {
   %final;
@@ -164,6 +165,7 @@ class %clsname %ext {
 
 }
 """).safe_substitute(
+        serial='@JsonSerializable(explicitToJson: true)' if args.useJson else '',
         clsname=args.name,
         final=';\n  '.join(final),
         const=', '.join(const),
@@ -246,6 +248,9 @@ def state_parser(parser):
     parser.add_argument('--%s' % T_PARENT,
                         help="Add extends from parent class other than Equatable",
                         required=False)
+    parser.add_argument('--useJson',action='store_true',
+                         help='Use Json Serialization or not'
+                         )
     shared_parser(parser)
 
 
